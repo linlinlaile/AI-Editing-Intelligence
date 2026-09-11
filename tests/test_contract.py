@@ -15,3 +15,24 @@ def test_migration_creates_authoritative_tables():
     c=sqlite3.connect(':memory:'); migrate(c)
     names={r[0] for r in c.execute("select name from sqlite_master where type='table'")}
     assert {'media_assets','media_streams','timeline_layers','temporal_segments'} <= names
+import sqlite3
+from aei.domain.models import AnalysisRun, Evidence, Observation
+from aei.storage.migrations import migrate
+from aei.adapters.repository import SemanticTimelineRepository
+
+def test_v2_tables_and_append_only_run():
+    c=sqlite3.connect(':memory:'); migrate(c)
+    names={r[0] for r in c.execute("select name from sqlite_master where type='table'")}
+    assert {'analysis_runs','samples','evidences','observations','observation_evidence'} <= names
+    assert c.execute('select max(version) from schema_migrations').fetchone()[0] == 2
+
+def test_observation_requires_evidence_and_roundtrips():
+    c=sqlite3.connect(':memory:'); migrate(c)
+    c.execute("insert into media_assets values ('a','file:///a',1,'f','mp4')")
+    repo=SemanticTimelineRepository(c)
+    repo.save_analysis_run(AnalysisRun('r','a','test-adapter'))
+    ev=Evidence('e','r','numeric_measurement',numeric_measurement={'value':3.2,'unit':'px'})
+    repo.save_evidence(ev)
+    obs=Observation('o','r','segment','s','motion_vector',{'x':1},evidence_ids=('e',))
+    repo.save_observation(obs)
+    assert repo.get_observation('o').evidence_ids == ('e',)
