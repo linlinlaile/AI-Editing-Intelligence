@@ -1,0 +1,1 @@
+{"format":{"format_name":"matroska","size":"1234"},"streams":[{"index":0,"codec_type":"video","codec_name":"ffv1","width":16,"height":16,"pix_fmt":"yuv420p","time_base":"1/1000","start_pts":5000,"duration_ts":2000,"avg_frame_rate":"0/0","r_frame_rate":"25/1","tags":{"rotate":"90"},"color_space":"bt709"}]}
