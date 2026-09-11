@@ -25,6 +25,7 @@ class TimeSpan:
     def __post_init__(self):
         if self.start.stream_id != self.end.stream_id: raise ValueError('span endpoints must use same stream')
         if self.start.pts > self.end.pts: raise ValueError('span must be non-decreasing')
+        if self.start.time_base != self.end.time_base: raise ValueError('span endpoints must use same time_base')
 
 @dataclass(frozen=True)
 class MediaAsset:
@@ -88,10 +89,13 @@ class Evidence:
     artifact_hash: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
     def __post_init__(self):
+        if (self.frame_start is None) != (self.frame_end is None):
+            raise ValueError('frame range requires both start and end')
         if self.frame_start is not None and self.frame_end is not None and self.frame_start > self.frame_end:
             raise ValueError('frame range must be non-decreasing')
         if not any((self.source_span is not None, self.frame_start is not None,
-                    self.numeric_measurement is not None, self.external_artifact_ref is not None)):
+                    self.numeric_measurement is not None, self.external_artifact_ref is not None,
+                    self.artifact_hash is not None)):
             raise ValueError('evidence must contain a supported reference')
 
 @dataclass(frozen=True)
@@ -119,3 +123,4 @@ def rational(value: Any) -> Optional[Rational]:
     if isinstance(value, Rational): return value
     if isinstance(value, (int, float)): return Rational(int(value), 1)
     n, d = str(value).split('/'); return Rational(int(n), int(d))
+
