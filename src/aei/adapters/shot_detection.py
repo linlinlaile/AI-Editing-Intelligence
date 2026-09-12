@@ -43,9 +43,15 @@ def persist_shots(detector: ShotDetector, asset: MediaAsset, stream: MediaStream
     boundaries=detector.detect(asset, stream)
     ordered=sorted(boundaries, key=lambda b:(b.start_pts,b.end_pts))
     previous=None
+    previous_frame=None
     for b in ordered:
-        if b.start_pts >= b.end_pts or (previous is not None and b.start_pts < previous): raise ValueError('shot boundaries must be ordered, non-overlapping, and non-empty')
+        if (b.start_pts >= b.end_pts or b.start_frame_index < 0 or
+            b.start_frame_index >= b.end_frame_index or
+            (previous is not None and b.start_pts < previous) or
+            (previous_frame is not None and b.start_frame_index < previous_frame)):
+            raise ValueError('shot boundaries must be ordered, non-overlapping, and non-empty')
         previous=b.end_pts
+        previous_frame=b.end_frame_index
     repository.save_analysis_run(run)
     layer=TimelineLayer(f'{run.id}:shots',asset.id,'shot',f'{detector.name}:{detector.version}'); repository.save_layer(layer)
     result=[]
