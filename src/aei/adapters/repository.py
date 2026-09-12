@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json, sqlite3
-from aei.domain.models import AnalysisRun, Sample, Evidence, Observation, TemporalSegment, TimelineLayer, TimeSpan, TimePoint, Rational
+from aei.domain.models import AnalysisRun, Sample, Artifact, Evidence, Observation, TemporalSegment, TimelineLayer, TimeSpan, TimePoint, Rational
 
 def _span_values(span):
     if span is None: return (None, None, None, None, None, None, None, None, None)
@@ -33,6 +33,20 @@ class SemanticTimelineRepository:
     def get_samples(self, run_id: str):
         rows=self.conn.execute('SELECT id,run_id,asset_id,purpose,kind,stream_id,start_pts,start_tb_num,start_tb_den,end_pts,end_tb_num,end_tb_den,start_frame_index,end_frame_index,source_frame_index,selection_reason,artifact_ids_json,segment_id,sampling_method FROM samples WHERE run_id=? ORDER BY COALESCE(start_pts,0),id',(run_id,)).fetchall()
         return [Sample(r[0],r[1],r[2],r[3],r[4],_span_from_values(r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13]),r[14],r[15],tuple(json.loads(r[16])),r[17],r[18]) for r in rows]
+    def save_artifact(self, artifact: Artifact):
+        p = artifact.source_point
+        self.conn.execute('INSERT INTO artifacts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (artifact.id,artifact.run_id,artifact.asset_id,artifact.sample_id,artifact.kind,artifact.media_type,artifact.uri,artifact.content_hash,artifact.byte_size,p.stream_id,p.pts,p.time_base.numerator,p.time_base.denominator,p.presentation_frame_index,artifact.width,artifact.height))
+        self.conn.commit()
+    def get_artifact(self, artifact_id: str) -> Artifact:
+        r=self.conn.execute('SELECT id,run_id,asset_id,sample_id,kind,media_type,uri,content_hash,byte_size,stream_id,source_pts,source_tb_num,source_tb_den,source_frame_index,width,height FROM artifacts WHERE id=?',(artifact_id,)).fetchone()
+        if r is None: raise KeyError(artifact_id)
+        return Artifact(r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8],TimePoint(r[9],r[10],Rational(r[11],r[12]),r[13]),r[14],r[15])
+    def get_artifacts_for_sample(self, sample_id: str):
+        ids=[r[0] for r in self.conn.execute('SELECT id FROM artifacts WHERE sample_id=? ORDER BY id',(sample_id,))]
+        return [self.get_artifact(i) for i in ids]
+    def get_artifacts(self, run_id: str):
+        ids=[r[0] for r in self.conn.execute('SELECT id FROM artifacts WHERE run_id=? ORDER BY id',(run_id,))]
+        return [self.get_artifact(i) for i in ids]
     def save_evidence(self, evidence: Evidence):
         sid,sp,sn,sd,ep,en,ed,sf,ef=_span_values(evidence.source_span)
         self.conn.execute('INSERT INTO evidences VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(evidence.id,evidence.run_id,evidence.kind,evidence.description,sid,sp,sn,sd,ep,en,ed,evidence.frame_start,evidence.frame_end,json.dumps(evidence.numeric_measurement) if evidence.numeric_measurement is not None else None,evidence.external_artifact_ref,evidence.artifact_hash,json.dumps(evidence.metadata))); self.conn.commit()

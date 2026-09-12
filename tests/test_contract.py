@@ -24,7 +24,7 @@ def test_v2_tables_and_append_only_run():
     c=sqlite3.connect(':memory:'); migrate(c)
     names={r[0] for r in c.execute("select name from sqlite_master where type='table'")}
     assert {'analysis_runs','samples','evidences','observations','observation_evidence'} <= names
-    assert c.execute('select max(version) from schema_migrations').fetchone()[0] == 2
+    assert c.execute('select max(version) from schema_migrations').fetchone()[0] == 3
 
 def test_observation_requires_evidence_and_roundtrips():
     c=sqlite3.connect(':memory:'); migrate(c)

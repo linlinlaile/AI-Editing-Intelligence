@@ -10,7 +10,7 @@ requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0,<9"]
-media = ["av>=12,<15"]
+media = ["av>=12,<15", "Pillow>=10,<12"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

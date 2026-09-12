@@ -78,6 +78,26 @@ class Sample:
     sampling_method: Optional[str] = None
 
 @dataclass(frozen=True)
+class Artifact:
+    id: str
+    run_id: str
+    asset_id: str
+    sample_id: str
+    kind: str
+    media_type: str
+    uri: str
+    content_hash: str
+    byte_size: int
+    source_point: TimePoint
+    width: int
+    height: int
+    def __post_init__(self):
+        if self.byte_size < 0: raise ValueError('byte_size must be non-negative')
+        if self.width <= 0 or self.height <= 0: raise ValueError('artifact dimensions must be positive')
+        if not self.content_hash: raise ValueError('content_hash is required')
+        if not self.uri or self.uri.startswith('/') or ':' in self.uri[:3]: raise ValueError('artifact uri must be portable')
+
+@dataclass(frozen=True)
 class Evidence:
     id: str
     run_id: str
