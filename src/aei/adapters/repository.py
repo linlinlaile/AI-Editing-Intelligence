@@ -3,7 +3,7 @@ import json, sqlite3
 from aei.domain.models import AnalysisRun, Sample, Evidence, Observation, TimeSpan, TimePoint, Rational
 
 def _span_values(span):
-    if span is None: return (None, None, None, None, None)
+    if span is None: return (None, None, None, None, None, None, None, None, None)
     return (span.start.stream_id, span.start.pts, span.start.time_base.numerator, span.start.time_base.denominator, span.end.pts, span.end.time_base.numerator, span.end.time_base.denominator, span.start.presentation_frame_index, span.end.presentation_frame_index)
 
 def _span(stream_id, start, end, sf, ef):
@@ -29,5 +29,6 @@ class SemanticTimelineRepository:
         if row is None: raise KeyError(observation_id)
         ev=tuple(r[0] for r in self.conn.execute('SELECT evidence_id FROM observation_evidence WHERE observation_id=? ORDER BY evidence_id',(observation_id,)))
         return Observation(row[0],row[1],row[2],row[3],row[4],json.loads(row[5]),row[6],row[7],row[8],row[9],ev,row[10])
+
 
 
