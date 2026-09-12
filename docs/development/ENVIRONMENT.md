@@ -9,7 +9,7 @@
 - 虚拟环境：仓库根目录 `.venv`；当前绝对路径为 `D:\vibecoding\AI-Editing-Intelligence\.venv`。
 - 解释器入口：`.\.venv\Scripts\python.exe`。
 - 包管理：虚拟环境内的 **pip 25.0.1**，setuptools 构建；`aei 0.1.0` 以 editable 方式安装到当前仓库。
-- 已安装并检测：pytest **8.4.2**、PyAV **14.2.0**、Pillow **11.3.0**；`pip check` 通过。
+- 已安装并检测：pytest **8.4.2**、PyAV **14.2.0**、Pillow **11.3.0**、torch **2.8.0+cpu**、torchvision **0.23.0+cpu**；`pip check` 通过。
 - 未发现仓库的 uv/Poetry lockfile；该虚拟环境没有 uv/Poetry。本次 session 的 PATH 无 python、py、uv、poetry、pytest、ffmpeg、ffprobe；这不代表整台机器没有安装它们。
 - `.venv` 已被 Git 忽略。当前依赖使用版本范围，没有依赖锁文件；上面的版本是实测快照，不保证未来重装解析出完全相同的版本。
 
@@ -23,6 +23,14 @@
 ```
 
 `dev` 提供 pytest；`media` 提供 PyAV 和 Pillow。完整媒体测试必须安装两组依赖，并检查测试输出没有因缺少依赖而 skipped。安装需要可用的包源或缓存；本次未重新安装依赖。
+
+视觉模型适配器的可选依赖安装命令（CPU wheel）：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[vision]" --index-url https://download.pytorch.org/whl/cpu
+```
+
+ResNet18 `IMAGENET1K_V1` 权重必须由操作者显式放置到 `.venv\models\resnet18-f37072fd.pth`；代码会校验 SHA-256，不会自动下载。真实模型测试另需设置 `RUN_REAL_MODEL=1`。
 
 仅当 `.venv` 不存在时才创建，不要覆盖一个正在使用的环境。当前 `pyvenv.cfg` 记录的基础解释器已经检测存在：
 
@@ -41,7 +49,14 @@
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-本次实测：**30 passed，0 failed，0 skipped**（Phase 0-4 原有 28 项 + Phase 5.1 新增 2 项）。这是现有测试套件的结果，不代表未覆盖的架构要求已经验收。
+本次实测（不启用真实模型）：**38 passed，1 skipped，0 failed**；跳过项是显式 opt-in 的真实 ResNet18 测试。另行启用 `RUN_REAL_MODEL=1` 时，该测试通过。历史 31 项基线和本阶段新增测试均包含在内。
+
+真实模型 smoke test：
+
+```powershell
+$env:RUN_REAL_MODEL = "1"
+.\.venv\Scripts\python.exe -m pytest tests/test_vision_adapter.py -m real_model -q
+```
 
 pytest 从 `pyproject.toml` 读取配置：`testpaths = ["tests"]`，`pythonpath = ["src"]`，无需设置 PYTHONPATH。
 
