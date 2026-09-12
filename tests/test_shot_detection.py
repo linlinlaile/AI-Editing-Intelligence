@@ -17,4 +17,9 @@ def test_shot_vertical_slice_preserves_timebase_and_provenance():
     segs=persist_shots(FakeDetector(),MediaAsset('a','file:///a',1,'fp'),stream,run,repo)
     assert len(segs)==2 and segs[0].span.start.time_base==Rational(1001,30000)
     assert repo.get_segments('r:shots')[1].span.start.pts==200
-    obs=repo.get_observation('r:shots:0:observation'); assert obs.feature=='shot_boundary_detected'
+    assert all(segment.kind == 'shot' for segment in segs)
+    evidence = c.execute("SELECT kind, stream_id, start_pts, end_pts, frame_start, frame_end, metadata_json FROM evidences WHERE run_id='r' ORDER BY id").fetchall()
+    assert len(evidence) == 2
+    assert all(row[0] == 'detector_output' and row[1] == 's' and row[2] is not None and row[3] is not None for row in evidence)
+    assert all(row[4] is not None and row[5] is not None and 'fake' in row[6] for row in evidence)
+    assert c.execute("SELECT COUNT(*) FROM observations WHERE run_id='r' AND feature='shot_boundary_detected'").fetchone()[0] == 0

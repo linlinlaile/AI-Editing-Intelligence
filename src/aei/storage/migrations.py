@@ -2,7 +2,7 @@ import sqlite3
 
 # Contract additions are backward-compatible columns; retain the v2 schema
 # marker so existing v1->v2 migration expectations remain stable.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 MIGRATION_SQL = '''
 CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS media_assets(id TEXT PRIMARY KEY, uri TEXT NOT NULL, byte_size INTEGER, fingerprint TEXT NOT NULL UNIQUE, format_name TEXT);
@@ -33,5 +33,6 @@ def migrate(conn: sqlite3.Connection):
     sample_cols={r[1] for r in conn.execute('PRAGMA table_info(samples)')}
     if 'segment_id' not in sample_cols: conn.execute('ALTER TABLE samples ADD COLUMN segment_id TEXT REFERENCES temporal_segments(id)')
     if 'sampling_method' not in sample_cols: conn.execute('ALTER TABLE samples ADD COLUMN sampling_method TEXT')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_observations_subject ON observations(target_type,target_id)')
     conn.commit()
 

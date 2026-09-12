@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Any, Optional
+import math
+from enum import Enum
 
 @dataclass(frozen=True)
 class Rational:
@@ -120,6 +122,18 @@ class Evidence:
                     self.artifact_hash is not None)):
             raise ValueError('evidence must contain a supported reference')
 
+class ObservationStatus(str, Enum):
+    SUCCESS = 'SUCCESS'; FAILED = 'FAILED'; UNKNOWN = 'UNKNOWN'; NOT_COVERED = 'NOT_COVERED'; PARTIAL = 'PARTIAL'
+
+def _valid_observation_value(value: Any) -> bool:
+    if isinstance(value, bool) or isinstance(value, str) or isinstance(value, int): return True
+    if isinstance(value, float): return math.isfinite(value)
+    if isinstance(value, list): return len(value) <= 4096 and all(_valid_observation_value(v) for v in value)
+    if isinstance(value, dict):
+        forbidden = {'prompt', 'response', 'raw_response', 'artifact_payload', 'embedding_vector'}
+        return all(isinstance(k, str) and k.lower() not in forbidden and _valid_observation_value(v) for k, v in value.items())
+    return False
+
 @dataclass(frozen=True)
 class Observation:
     id: str
@@ -128,7 +142,7 @@ class Observation:
     target_id: str
     feature: str
     value: Any
-    value_status: str = 'observed'
+    value_status: ObservationStatus = ObservationStatus.SUCCESS
     confidence: Optional[float] = None
     confidence_kind: Optional[str] = None
     coverage: Optional[float] = None
@@ -136,13 +150,13 @@ class Observation:
     producer_ref: Optional[str] = None
     def __post_init__(self):
         if not self.evidence_ids: raise ValueError('observation must reference at least one evidence')
+        if not isinstance(self.value_status, ObservationStatus): raise ValueError('value_status must be an ObservationStatus')
+        if not _valid_observation_value(self.value): raise ValueError('observation value must be structured data')
         if self.confidence is not None and not 0 <= self.confidence <= 1: raise ValueError('confidence must be between 0 and 1')
         if self.coverage is not None and not 0 <= self.coverage <= 1: raise ValueError('coverage must be between 0 and 1')
-        if self.value_status not in {'observed','unknown','not_applicable','failed'}: raise ValueError('invalid value_status')
 
 def rational(value: Any) -> Optional[Rational]:
     if value in (None, '', '0/0'): return None
     if isinstance(value, Rational): return value
     if isinstance(value, (int, float)): return Rational(int(value), 1)
     n, d = str(value).split('/'); return Rational(int(n), int(d))
-

@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import uuid4
-from aei.domain.models import AnalysisRun, Evidence, Observation, TemporalSegment, TimelineLayer, TimePoint, TimeSpan, MediaAsset, MediaStream
+from aei.domain.models import AnalysisRun, Evidence, TemporalSegment, TimelineLayer, TimePoint, TimeSpan, MediaAsset, MediaStream
 
 @dataclass(frozen=True)
 class ShotBoundary:
@@ -60,6 +60,5 @@ def persist_shots(detector: ShotDetector, asset: MediaAsset, stream: MediaStream
         span=TimeSpan(TimePoint(stream.id,b.start_pts,stream.time_base,b.start_frame_index),TimePoint(stream.id,b.end_pts,stream.time_base,b.end_frame_index))
         seg=TemporalSegment(sid,layer.id,'shot',span); repository.save_segment(seg)
         ev=Evidence(f'{sid}:evidence',run.id,'detector_output',description='shot boundary detected',source_span=span,frame_start=b.start_frame_index,frame_end=b.end_frame_index,metadata={'detector':detector.name,'detector_version':detector.version,'config':detector.config}); repository.save_evidence(ev)
-        repository.save_observation(Observation(f'{sid}:observation',run.id,'segment',sid,'shot_boundary_detected',{'start_pts':b.start_pts,'end_pts':b.end_pts},evidence_ids=(ev.id,),producer_ref=f'{detector.name}:{detector.version}'))
         result.append(seg)
     return result

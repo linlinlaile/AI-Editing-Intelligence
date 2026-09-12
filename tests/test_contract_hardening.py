@@ -18,7 +18,7 @@ def test_timepoint_timespan_round_trip_preserves_pts_timebase_and_index():
     assert rebuilt == original
 def test_migration_upgrade_from_v1_preserves_data():
     c=sqlite3.connect(':memory:'); c.executescript("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP); INSERT INTO schema_migrations(version) VALUES (1); CREATE TABLE media_assets(id TEXT PRIMARY KEY, uri TEXT NOT NULL, byte_size INTEGER, fingerprint TEXT NOT NULL UNIQUE, format_name TEXT); INSERT INTO media_assets VALUES ('a','file:///a',1,'fp','mp4');"); migrate(c)
-    assert c.execute("SELECT uri FROM media_assets WHERE id='a'").fetchone()[0]=='file:///a'; assert c.execute('SELECT max(version) FROM schema_migrations').fetchone()[0]==3
+    assert c.execute("SELECT uri FROM media_assets WHERE id='a'").fetchone()[0]=='file:///a'; assert c.execute('SELECT max(version) FROM schema_migrations').fetchone()[0]==4
     migrate(c); assert c.execute('SELECT count(*) FROM schema_migrations').fetchone()[0]==2
 def test_observation_and_evidence_constraints():
     with pytest.raises(ValueError): Evidence('e','r','frame',frame_start=3)
@@ -32,5 +32,3 @@ def test_schema_declares_evidence_reference_requirement():
     schema = json.loads((Path(__file__).parents[1] / 'schemas' / 'semantic-timeline-v1.json').read_text())
     evidence = schema['$' + 'defs']['evidence']
     assert evidence['allOf'][0]['anyOf']
-
-

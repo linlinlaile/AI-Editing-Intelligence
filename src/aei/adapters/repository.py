@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json, sqlite3
-from aei.domain.models import AnalysisRun, Sample, Artifact, Evidence, Observation, TemporalSegment, TimelineLayer, TimeSpan, TimePoint, Rational
+from aei.domain.models import AnalysisRun, Sample, Artifact, Evidence, Observation, ObservationStatus, TemporalSegment, TimelineLayer, TimeSpan, TimePoint, Rational
+_LEGACY_STATUS = {'observed': ObservationStatus.SUCCESS, 'failed': ObservationStatus.FAILED, 'unknown': ObservationStatus.UNKNOWN, 'not_applicable': ObservationStatus.NOT_COVERED}
 
 def _span_values(span):
     if span is None: return (None, None, None, None, None, None, None, None, None)
@@ -51,13 +52,18 @@ class SemanticTimelineRepository:
         sid,sp,sn,sd,ep,en,ed,sf,ef=_span_values(evidence.source_span)
         self.conn.execute('INSERT INTO evidences VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(evidence.id,evidence.run_id,evidence.kind,evidence.description,sid,sp,sn,sd,ep,en,ed,evidence.frame_start,evidence.frame_end,json.dumps(evidence.numeric_measurement) if evidence.numeric_measurement is not None else None,evidence.external_artifact_ref,evidence.artifact_hash,json.dumps(evidence.metadata))); self.conn.commit()
     def save_observation(self, observation: Observation):
-        self.conn.execute('INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?,?,?)',(observation.id,observation.run_id,observation.target_type,observation.target_id,observation.feature,json.dumps(observation.value),observation.value_status,observation.confidence,observation.confidence_kind,observation.coverage,observation.producer_ref))
+        self.conn.execute('INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?,?,?)',(observation.id,observation.run_id,observation.target_type,observation.target_id,observation.feature,json.dumps(observation.value),observation.value_status.value,observation.confidence,observation.confidence_kind,observation.coverage,observation.producer_ref))
         self.conn.executemany('INSERT INTO observation_evidence(observation_id,evidence_id) VALUES (?,?)',[(observation.id,e) for e in observation.evidence_ids]); self.conn.commit()
     def get_observation(self, observation_id: str) -> Observation:
         row=self.conn.execute('SELECT id,run_id,target_type,target_id,feature,value_json,value_status,confidence,confidence_kind,coverage,producer_ref FROM observations WHERE id=?',(observation_id,)).fetchone()
         if row is None: raise KeyError(observation_id)
         ev=tuple(r[0] for r in self.conn.execute('SELECT evidence_id FROM observation_evidence WHERE observation_id=? ORDER BY evidence_id',(observation_id,)))
-        return Observation(row[0],row[1],row[2],row[3],row[4],json.loads(row[5]),row[6],row[7],row[8],row[9],ev,row[10])
+        status = _LEGACY_STATUS[row[6]] if row[6] in _LEGACY_STATUS else ObservationStatus(row[6])
+        return Observation(row[0],row[1],row[2],row[3],row[4],json.loads(row[5]),status,row[7],row[8],row[9],ev,row[10])
+    def list_observations_by_run(self, run_id: str):
+        return [self.get_observation(r[0]) for r in self.conn.execute('SELECT id FROM observations WHERE run_id=? ORDER BY id',(run_id,))]
+    def list_observations_by_subject(self, target_type: str, target_id: str):
+        return [self.get_observation(r[0]) for r in self.conn.execute('SELECT id FROM observations WHERE target_type=? AND target_id=? ORDER BY id',(target_type,target_id))]
 
 
 

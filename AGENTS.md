@@ -22,6 +22,8 @@ Video → Scene → Event → Shot → Moment / Frame
 
 ## 开始工作前必须阅读
 
+任何 Agent 修改代码前，必须先阅读 [开发环境与测试入口](docs/development/ENVIRONMENT.md)。运行测试必须使用该文档中的项目 `.venv` 解释器命令，不得依赖全局 `python`、临时 PATH、环境激活状态或之前的对话历史。环境不可用时按该文档检查和恢复，不安装新的全局工具。
+
 按以下顺序阅读，避免把长期愿景误当成当前需求：
 
 1. `README.md`：项目定位和当前入口。
