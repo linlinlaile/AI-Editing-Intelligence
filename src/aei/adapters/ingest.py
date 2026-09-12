@@ -2,7 +2,7 @@ from __future__ import annotations
 import hashlib, json, os, subprocess
 from dataclasses import dataclass
 from typing import Any
-from aei.domain.models import MediaAsset, MediaStream, rational
+from aei.domain.models import MediaAsset, MediaStream, Rational, rational
 
 @dataclass
 class IngestResult:

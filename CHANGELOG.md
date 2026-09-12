@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- Implemented the Phase 4.2 `PyAVFrameLocator`/`FFmpegFrameLocator` adapter for local MP4, MOV and MKV decoding, preserving presentation-order PTS and rational timebases for CFR, VFR, non-zero-PTS and B-frame media.
+
 当前工作区正在继续加固 Shot Boundary Detection 的契约验证，重点包括更多媒体探针 fixture，以及对 CFR、VFR、非零起始 PTS 和 B-frame 呈现顺序的排序、非重叠和往返一致性检查。这部分尚未形成新的发布里程碑。
 
 下一阶段计划完成代表性帧与短时序窗口的 Sampling pipeline，使 Shot 能够产生带 source 坐标、用途和选择理由的 Sample，并为后续分析器消费。随后再接入不依赖具体模型的语义分析 port；VLM、ASR、embedding 和云服务仍不属于当前阶段的已交付内容。
