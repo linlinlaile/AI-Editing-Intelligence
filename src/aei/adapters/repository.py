@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json, sqlite3
-from aei.domain.models import AnalysisRun, Sample, Evidence, Observation, TimeSpan, TimePoint, Rational
+from aei.domain.models import AnalysisRun, Sample, Evidence, Observation, TemporalSegment, TimelineLayer, TimeSpan, TimePoint, Rational
 
 def _span_values(span):
     if span is None: return (None, None, None, None, None, None, None, None, None)
@@ -15,6 +15,14 @@ class SemanticTimelineRepository:
         self.conn = conn
     def save_analysis_run(self, run: AnalysisRun):
         self.conn.execute('INSERT INTO analysis_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', (run.id,run.asset_id,run.producer_name,run.status,run.model_name,run.model_revision,run.code_revision,run.config_hash,json.dumps(run.input_artifact_ids),json.dumps(run.parent_run_ids),run.started_at,run.completed_at)); self.conn.commit()
+    def save_layer(self, layer: TimelineLayer):
+        self.conn.execute('INSERT INTO timeline_layers VALUES (?,?,?,?)',(layer.id,layer.asset_id,layer.kind,layer.detector_revision)); self.conn.commit()
+    def save_segment(self, segment: TemporalSegment):
+        s,e=segment.span.start,segment.span.end
+        self.conn.execute('INSERT INTO temporal_segments(id,layer_id,kind,stream_id,tb_num,tb_den,start_pts,end_pts,start_frame_index,end_frame_index) VALUES (?,?,?,?,?,?,?,?,?,?)',(segment.id,segment.layer_id,segment.kind,s.stream_id,s.time_base.numerator,s.time_base.denominator,s.pts,e.pts,s.presentation_frame_index,e.presentation_frame_index)); self.conn.commit()
+    def get_segments(self, layer_id: str):
+        rows=self.conn.execute('SELECT id,layer_id,kind,stream_id,tb_num,tb_den,start_pts,end_pts,start_frame_index,end_frame_index FROM temporal_segments WHERE layer_id=? ORDER BY start_pts,id',(layer_id,)).fetchall()
+        return [TemporalSegment(r[0],r[1],r[2],TimeSpan(TimePoint(r[3],r[6],Rational(r[4],r[5]),r[8]),TimePoint(r[3],r[7],Rational(r[4],r[5]),r[9]))) for r in rows]
     def save_sample(self, sample: Sample):
         sid,sp,sn,sd,ep,en,ed,sf,ef=_span_values(sample.source_span)
         self.conn.execute('INSERT INTO samples VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(sample.id,sample.run_id,sample.asset_id,sample.purpose,sample.kind,sid,sp,sn,sd,ep,en,ed,sf,ef,sample.source_frame_index,sample.selection_reason,json.dumps(sample.artifact_ids))); self.conn.commit()
