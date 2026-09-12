@@ -10,6 +10,10 @@ def _span(stream_id, start, end, sf, ef):
     if stream_id is None or start is None or end is None: return None
     return TimeSpan(TimePoint(stream_id, start, Rational(1, 1), sf), TimePoint(stream_id, end, Rational(1, 1), ef))
 
+def _span_from_values(stream_id, start, start_num, start_den, end, end_num, end_den, sf, ef):
+    if stream_id is None or start is None or end is None: return None
+    return TimeSpan(TimePoint(stream_id, start, Rational(start_num or 1, start_den or 1), sf), TimePoint(stream_id, end, Rational(end_num or 1, end_den or 1), ef))
+
 class SemanticTimelineRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
@@ -25,7 +29,10 @@ class SemanticTimelineRepository:
         return [TemporalSegment(r[0],r[1],r[2],TimeSpan(TimePoint(r[3],r[6],Rational(r[4],r[5]),r[8]),TimePoint(r[3],r[7],Rational(r[4],r[5]),r[9]))) for r in rows]
     def save_sample(self, sample: Sample):
         sid,sp,sn,sd,ep,en,ed,sf,ef=_span_values(sample.source_span)
-        self.conn.execute('INSERT INTO samples VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(sample.id,sample.run_id,sample.asset_id,sample.purpose,sample.kind,sid,sp,sn,sd,ep,en,ed,sf,ef,sample.source_frame_index,sample.selection_reason,json.dumps(sample.artifact_ids))); self.conn.commit()
+        self.conn.execute('INSERT INTO samples(id,run_id,asset_id,purpose,kind,stream_id,start_pts,start_tb_num,start_tb_den,end_pts,end_tb_num,end_tb_den,start_frame_index,end_frame_index,source_frame_index,selection_reason,artifact_ids_json,segment_id,sampling_method) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(sample.id,sample.run_id,sample.asset_id,sample.purpose,sample.kind,sid,sp,sn,sd,ep,en,ed,sf,ef,sample.source_frame_index,sample.selection_reason,json.dumps(sample.artifact_ids),sample.segment_id,sample.sampling_method)); self.conn.commit()
+    def get_samples(self, run_id: str):
+        rows=self.conn.execute('SELECT id,run_id,asset_id,purpose,kind,stream_id,start_pts,start_tb_num,start_tb_den,end_pts,end_tb_num,end_tb_den,start_frame_index,end_frame_index,source_frame_index,selection_reason,artifact_ids_json,segment_id,sampling_method FROM samples WHERE run_id=? ORDER BY COALESCE(start_pts,0),id',(run_id,)).fetchall()
+        return [Sample(r[0],r[1],r[2],r[3],r[4],_span_from_values(r[5],r[6],r[7],r[8],r[9],r[10],r[11],r[12],r[13]),r[14],r[15],tuple(json.loads(r[16])),r[17],r[18]) for r in rows]
     def save_evidence(self, evidence: Evidence):
         sid,sp,sn,sd,ep,en,ed,sf,ef=_span_values(evidence.source_span)
         self.conn.execute('INSERT INTO evidences VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(evidence.id,evidence.run_id,evidence.kind,evidence.description,sid,sp,sn,sd,ep,en,ed,evidence.frame_start,evidence.frame_end,json.dumps(evidence.numeric_measurement) if evidence.numeric_measurement is not None else None,evidence.external_artifact_ref,evidence.artifact_hash,json.dumps(evidence.metadata))); self.conn.commit()

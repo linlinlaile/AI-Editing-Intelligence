@@ -74,6 +74,8 @@ class Sample:
     source_frame_index: Optional[int] = None
     selection_reason: Optional[str] = None
     artifact_ids: tuple[str, ...] = ()
+    segment_id: Optional[str] = None
+    sampling_method: Optional[str] = None
 
 @dataclass(frozen=True)
 class Evidence:

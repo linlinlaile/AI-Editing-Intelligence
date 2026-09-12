@@ -1,5 +1,7 @@
 import sqlite3
 
+# Contract additions are backward-compatible columns; retain the v2 schema
+# marker so existing v1->v2 migration expectations remain stable.
 SCHEMA_VERSION = 2
 MIGRATION_SQL = '''
 CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
@@ -8,7 +10,7 @@ CREATE TABLE IF NOT EXISTS media_streams(id TEXT PRIMARY KEY, asset_id TEXT NOT 
 CREATE TABLE IF NOT EXISTS timeline_layers(id TEXT PRIMARY KEY, asset_id TEXT NOT NULL REFERENCES media_assets(id), kind TEXT NOT NULL, detector_revision TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS temporal_segments(id TEXT PRIMARY KEY, layer_id TEXT NOT NULL REFERENCES timeline_layers(id), kind TEXT NOT NULL, stream_id TEXT NOT NULL REFERENCES media_streams(id), tb_num INTEGER NOT NULL DEFAULT 1, tb_den INTEGER NOT NULL DEFAULT 1, start_pts INTEGER NOT NULL, end_pts INTEGER NOT NULL, start_frame_index INTEGER, end_frame_index INTEGER);
 CREATE TABLE IF NOT EXISTS analysis_runs(id TEXT PRIMARY KEY, asset_id TEXT NOT NULL REFERENCES media_assets(id), producer_name TEXT NOT NULL, status TEXT NOT NULL, model_name TEXT, model_revision TEXT, code_revision TEXT, config_hash TEXT, input_artifact_ids_json TEXT NOT NULL DEFAULT '[]', parent_run_ids_json TEXT NOT NULL DEFAULT '[]', started_at TEXT, completed_at TEXT);
-CREATE TABLE IF NOT EXISTS samples(id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES analysis_runs(id), asset_id TEXT NOT NULL REFERENCES media_assets(id), purpose TEXT NOT NULL, kind TEXT NOT NULL, stream_id TEXT, start_pts INTEGER, start_tb_num INTEGER, start_tb_den INTEGER, end_pts INTEGER, end_tb_num INTEGER, end_tb_den INTEGER, start_frame_index INTEGER, end_frame_index INTEGER, source_frame_index INTEGER, selection_reason TEXT, artifact_ids_json TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE IF NOT EXISTS samples(id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES analysis_runs(id), asset_id TEXT NOT NULL REFERENCES media_assets(id), purpose TEXT NOT NULL, kind TEXT NOT NULL, stream_id TEXT, start_pts INTEGER, start_tb_num INTEGER, start_tb_den INTEGER, end_pts INTEGER, end_tb_num INTEGER, end_tb_den INTEGER, start_frame_index INTEGER, end_frame_index INTEGER, source_frame_index INTEGER, selection_reason TEXT, artifact_ids_json TEXT NOT NULL DEFAULT '[]', segment_id TEXT REFERENCES temporal_segments(id), sampling_method TEXT);
 CREATE TABLE IF NOT EXISTS evidences(id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES analysis_runs(id), kind TEXT NOT NULL, description TEXT, stream_id TEXT, start_pts INTEGER, start_tb_num INTEGER, start_tb_den INTEGER, end_pts INTEGER, end_tb_num INTEGER, end_tb_den INTEGER, frame_start INTEGER, frame_end INTEGER, numeric_measurement_json TEXT, external_artifact_ref TEXT, artifact_hash TEXT, metadata_json TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS observations(id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES analysis_runs(id), target_type TEXT NOT NULL, target_id TEXT NOT NULL, feature TEXT NOT NULL, value_json TEXT NOT NULL, value_status TEXT NOT NULL, confidence REAL, confidence_kind TEXT, coverage REAL, producer_ref TEXT);
 CREATE TABLE IF NOT EXISTS observation_evidence(observation_id TEXT NOT NULL REFERENCES observations(id) ON DELETE CASCADE, evidence_id TEXT NOT NULL REFERENCES evidences(id), PRIMARY KEY(observation_id,evidence_id));
@@ -25,5 +27,8 @@ def migrate(conn: sqlite3.Connection):
     cols={r[1] for r in conn.execute('PRAGMA table_info(temporal_segments)')}
     if 'tb_num' not in cols: conn.execute('ALTER TABLE temporal_segments ADD COLUMN tb_num INTEGER NOT NULL DEFAULT 1')
     if 'tb_den' not in cols: conn.execute('ALTER TABLE temporal_segments ADD COLUMN tb_den INTEGER NOT NULL DEFAULT 1')
+    sample_cols={r[1] for r in conn.execute('PRAGMA table_info(samples)')}
+    if 'segment_id' not in sample_cols: conn.execute('ALTER TABLE samples ADD COLUMN segment_id TEXT REFERENCES temporal_segments(id)')
+    if 'sampling_method' not in sample_cols: conn.execute('ALTER TABLE samples ADD COLUMN sampling_method TEXT')
     conn.commit()
 
