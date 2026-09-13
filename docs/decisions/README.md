@@ -9,6 +9,8 @@
 - [ADR-0003：Semantic Timeline 的事实/判断分层](ADR-0003-semantic-timeline-separation.md)
 - [ADR-0004：V0.1 先做 Shot，不把 Scene/Event 作为前置依赖](ADR-0004-v0-1-shot-first.md)
 - [ADR-0005：权威 SQLite，派生索引可重建](ADR-0005-authoritative-store-and-derived-index.md)
+- [ADR-0013：Benchmark Dataset and Evaluation Contract v1](ADR-0013-benchmark-dataset-and-evaluation-contract.md)
+- [ADR-0014：Benchmark Workflow and Revision Comparison](ADR-0014-benchmark-workflow-and-revision-comparison.md)
 
 ## 尚未决定的问题
 

@@ -1,6 +1,6 @@
 # ADR-0013: Benchmark Dataset and Evaluation Contract v1
 
-- Status: Draft
+- Status: Accepted
 - Date: 2026-09-13
 - Phase: 5.5
 
@@ -131,4 +131,3 @@ Benchmark datasets, annotations, snapshots and reports may be supplied as applic
 This decision makes semantic quality measurable without coupling analyzers to their evaluators. It establishes a stable basis for comparing existing Artifact and Shot observations and for detecting regressions before adding new observation dimensions.
 
 The initial benchmark will be limited by the quality and coverage of its annotations. A metric result is evidence about the defined dataset and task, not proof of universal real-world correctness. New task families, including temporal or retrieval evaluation, require their own contract and decision before being added.
-
