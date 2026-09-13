@@ -8,7 +8,8 @@ from aei.domain.aggregation import (
     AggregationInput, AggregationResult, MissingInput, MissingInputReason,
     aggregate_shot_observations, generate_shot_observation_evidence,
 )
-from aei.domain.models import Artifact, Evidence, Observation, Sample, TemporalSegment
+from aei.domain.models import AnalysisRun, Artifact, Evidence, Observation, Sample, TemporalSegment
+from aei.ports.repository import ObservationRepository
 from aei.ports.analyzer import AnalysisInput, Analyzer, AnalyzerContext
 
 
@@ -96,6 +97,18 @@ class ShotObservationAggregationUseCase:
             evidence_id=request.evidence_id,
         )
         return ShotAnalysisResult(observation, evidence, aggregation, tuple(missing))
+
+    def execute_and_persist(self, request: ShotAnalysisRequest,
+                            aggregation_run: AnalysisRun,
+                            repository: ObservationRepository) -> ShotAnalysisResult:
+        """Run orchestration and persist only the new aggregation records."""
+        if aggregation_run.id != request.aggregation_run_id:
+            raise ValueError("aggregation run ID does not match request")
+        result = self.execute(request)
+        repository.save_analysis_run(aggregation_run)
+        repository.save_evidence(result.evidence)
+        repository.save_observation(result.observation)
+        return result
 
 
 

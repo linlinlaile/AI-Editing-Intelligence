@@ -1,0 +1,9 @@
+"""Persistence port used by application use cases."""
+from typing import Protocol
+from aei.domain.models import AnalysisRun, Evidence, Observation
+
+
+class ObservationRepository(Protocol):
+    def save_analysis_run(self, run: AnalysisRun) -> None: ...
+    def save_evidence(self, evidence: Evidence) -> None: ...
+    def save_observation(self, observation: Observation) -> None: ...
