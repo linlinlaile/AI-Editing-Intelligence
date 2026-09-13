@@ -6,7 +6,7 @@
 
 ## Context
 
-ADR-0013 建立了 Benchmark Dataset、BenchmarkInputSnapshot、MetricResult 和
+ADR-0013 建立了 Benchmark Dataset、evaluation input boundary、MetricResult 和
 BenchmarkReport 的独立契约。Phase 5.5.2 已实现
 `vision.classification.accuracy` v1，但当前报告主要描述一次 benchmark
 运行，尚未定义如何安全地比较两次分析结果、识别 case 级退化，或处理两次
@@ -28,7 +28,7 @@ Phase 5.5.3 定义一个只消费既有 benchmark 输出的 revision comparison 
 单次 benchmark workflow 为：
 
 ```text
-Dataset + Annotation + prepared input snapshot
+Dataset + Annotation + prepared evaluation input
         ↓
 MetricCalculator
         ↓
@@ -54,6 +54,22 @@ revision 上的结果。`BenchmarkComparisonReport` 是两个已存在报告之�
 `MetricResult` 表示一个指标在 benchmark case 集合上的汇总及指标专属值。
 `EvaluationResult` 仍表示一个 Evaluator 对单个 Observation 的契约、证据或
 其他独立评价结果。Benchmark 不通过实现或扩展 Evaluator 来完成比较。
+
+### 1.1 `BenchmarkComparisonReport` v1 minimum contract
+
+`BenchmarkComparisonReport` v1 至少必须包含：
+
+- `comparison_contract_version`；
+- baseline 与 candidate 两侧 `BenchmarkReport` 的稳定身份或引用；
+- 两侧 dataset、annotation、metric 和 revision identity（或明确缺失）；
+- comparability 状态及不可比原因（如适用）；
+- 按稳定 `case_id` 对齐后的 case outcome transition 计数；
+- evaluability shift 信息，包括两侧分母及新增、消失、不可评价 case 计数；
+- metric delta（仅在本 ADR 的严格可比条件满足时）及其状态；
+- 生成时间、comparison producer/version 和可追溯的输入 report identity。
+
+可选的 case ID 和 reason 明细不得替代上述汇总字段。新增字段必须遵守本 ADR
+的向后读取和显式版本规则。
 
 ### 2. Revision identity
 
@@ -101,7 +117,10 @@ case 数量相同不代表 case 集合相同。case 必须按稳定 case ID 对�
 ### 4. Case transition semantics
 
 对同时存在于 baseline 和 candidate、且两侧都有该 metric 的 case，比较器应
-保留 case 级 outcome。对 accuracy v1，基本 outcome 为：
+保留由对应 `MetricCalculator` 产生的 case 级 outcome。Comparator 只负责读取
+两侧 metric output、校验可比性、按 `case_id` 对齐并计算迁移；它不得重新解释
+Observation，也不得根据 Observation 的原始字段自行推导正确或错误。对 accuracy
+v1，基本 outcome 为：
 
 - `CORRECT`；
 - `INCORRECT`；
@@ -182,4 +201,3 @@ fingerprint；缺少这些信息时，系统会返回不可比较，而不是给
 - EvaluationResult 的扩展、持久化或替代；
 - 自动质量门禁、发布阻断或模型选择策略；
 - 通用的跨 task 总质量分数。
-

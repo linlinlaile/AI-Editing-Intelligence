@@ -4,7 +4,9 @@ AI Editing Intelligence（暂定名）是一个 local-first 的视频素材理�
 
 ## 当前阶段
 
-项目处于 V0.1 设计固化阶段，仓库暂不包含实现代码，也不接入具体 VLM、ASR 或 embedding 模型。首个实现目标是建立稳定的 Semantic Timeline 契约，并完成 frame-accurate ingest 的最小 vertical slice。
+项目已完成 V0.1 的 **Phase 5.5.3 Benchmark Revision Comparison**，仓库已包含 Semantic Timeline、Observation、Evidence、Analyzer、评价和 benchmark vertical slice 的实现与契约。当前 benchmark 只覆盖已定义的视觉分类 accuracy v1；不接入云服务，也不把具体模型写入领域契约。
+
+Benchmark Revision Comparison 支持两个既有 `BenchmarkReport` 的比较，通过 `EvaluationBasisIdentity` 表达固定评价基础、`RevisionIdentity` 记录被比较的分析来源，并按 `CaseOutcome` 进行 case transition analysis，为 revision regression comparison 提供基础。不可比报告的迁移统计仅作为诊断信息；当前未实现 benchmark persistence 或自动 quality gate。实现范围与限制见 [Phase 5.5.3 Summary](docs/phases/PHASE_5_5_3_SUMMARY.md)。
 
 V0.1 的最小闭环是：
 
@@ -48,4 +50,4 @@ V0.1 不开发完整 NLE、复杂 timeline editor、自动字幕编辑器、AI �
 
 ## 下一步
 
-建议先实现 **Semantic Timeline Contract v1 + Frame-accurate Ingest Vertical Slice**：建立时间、媒体、Segment、Evidence、Provenance 的契约和 SQLite migration，并用 ffprobe/PyAV 完成可重复的本地 ingest。该任务不涉及模型集成。
+下一步应在既有契约和 benchmark 基线上继续扩展可验证能力；新增分析维度必须保留证据、运行 provenance 和可重算边界，并配套固定 fixture 或适用的 benchmark 评估。当前阶段不把 Scene/Event 推理、完整 NLE 或自动成片提前纳入实现范围。

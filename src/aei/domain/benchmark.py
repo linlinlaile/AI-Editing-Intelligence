@@ -102,12 +102,16 @@ class MetricResult:
     unevaluable_case_count: int
     values: Mapping[str, Any] = field(default_factory=dict)
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    case_outcomes: tuple["CaseOutcome", ...] = ()
 
     def __post_init__(self) -> None:
         for value, name in ((self.metric_name, "metric_name"), (self.metric_version, "metric_version"), (self.status, "status")):
             _required(value, name)
         if self.evaluated_case_count < 0 or self.unevaluable_case_count < 0:
             raise ValueError("metric case counts must be non-negative")
+        ids = [outcome.case_id for outcome in self.case_outcomes]
+        if len(ids) != len(set(ids)):
+            raise ValueError("metric case outcome IDs must be unique")
 
 
 @dataclass(frozen=True)
@@ -120,6 +124,12 @@ class BenchmarkReport:
     evaluator_ref: str
     metric_results: tuple[MetricResult, ...]
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    report_contract_version: str = "v1"
+    revision_identity: "RevisionIdentity | None" = None
+    dataset_identity: str | None = None
+    annotation_identity: str | None = None
+    metric_config_identity: str | None = None
+    evaluation_basis: "EvaluationBasisIdentity | None" = None
 
     def __post_init__(self) -> None:
         for value, name in ((self.id, "id"), (self.evaluation_run_id, "evaluation_run_id"), (self.dataset_id, "dataset_id"),
@@ -130,4 +140,81 @@ class BenchmarkReport:
             raise ValueError("benchmark report requires at least one metric result")
 
 
-__all__ = ["BenchmarkCase", "BenchmarkAnnotation", "BenchmarkDataset", "BenchmarkInputSnapshot", "BenchmarkReport", "MetricResult"]
+@dataclass(frozen=True)
+class CaseOutcome:
+    case_id: str
+    status: str
+    reason: str | None = None
+
+    VALID_STATUSES = frozenset({"CORRECT", "INCORRECT", "UNEVALUABLE", "MISSING"})
+
+    def __post_init__(self) -> None:
+        _required(self.case_id, "case_id")
+        if self.status not in self.VALID_STATUSES:
+            raise ValueError("invalid case outcome status")
+        if self.reason is not None and (not isinstance(self.reason, str) or not self.reason):
+            raise ValueError("case outcome reason must be a non-empty string")
+
+
+@dataclass(frozen=True)
+class RevisionIdentity:
+    producer_ref: str | None = None
+    model_ref: str | None = None
+    config_ref: str | None = None
+    code_revision: str | None = None
+    analysis_run_ids: tuple[str, ...] = ()
+    fingerprint: str | None = None
+
+    @property
+    def completeness(self) -> str:
+        if all(value is None for value in (self.producer_ref, self.model_ref, self.config_ref, self.code_revision, self.fingerprint)) and not self.analysis_run_ids:
+            return "MISSING"
+        required = (self.producer_ref, self.model_ref, self.config_ref, self.code_revision)
+        return "COMPLETE" if all(isinstance(value, str) and value for value in required) else "INCOMPLETE"
+
+
+@dataclass(frozen=True)
+class EvaluationBasisIdentity:
+    dataset_identity: str
+    dataset_version: str
+    annotation_identity: str
+    annotation_version: str
+    case_membership_identity: str
+    task: str
+    feature: str
+    taxonomy: str
+
+    def __post_init__(self) -> None:
+        for value, name in ((self.dataset_identity, "dataset_identity"), (self.dataset_version, "dataset_version"), (self.annotation_identity, "annotation_identity"), (self.annotation_version, "annotation_version"), (self.case_membership_identity, "case_membership_identity"), (self.task, "task"), (self.feature, "feature"), (self.taxonomy, "taxonomy")):
+            _required(value, name)
+
+
+@dataclass(frozen=True)
+class BenchmarkComparisonReport:
+    baseline_report_id: str
+    candidate_report_id: str
+    comparability_status: str
+    comparability_reasons: tuple[str, ...] = ()
+    transition_counts: Mapping[str, int] = field(default_factory=dict)
+    evaluability_shift: Mapping[str, int] = field(default_factory=dict)
+    metric_delta: Mapping[str, Any] | None = None
+    comparison_contract_version: str = "v1"
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    baseline_basis: "EvaluationBasisIdentity | None" = None
+    candidate_basis: "EvaluationBasisIdentity | None" = None
+    baseline_revision: RevisionIdentity | None = None
+    candidate_revision: RevisionIdentity | None = None
+    baseline_metric_name: str | None = None
+    baseline_metric_version: str | None = None
+    baseline_metric_config_identity: str | None = None
+    candidate_metric_name: str | None = None
+    candidate_metric_version: str | None = None
+    candidate_metric_config_identity: str | None = None
+
+    def __post_init__(self) -> None:
+        _required(self.baseline_report_id, "baseline_report_id")
+        _required(self.candidate_report_id, "candidate_report_id")
+        _required(self.comparability_status, "comparability_status")
+
+
+__all__ = ["BenchmarkCase", "BenchmarkAnnotation", "BenchmarkDataset", "BenchmarkInputSnapshot", "MetricResult", "BenchmarkReport", "CaseOutcome", "RevisionIdentity", "EvaluationBasisIdentity", "BenchmarkComparisonReport"]

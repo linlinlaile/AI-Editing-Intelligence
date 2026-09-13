@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from aei.domain.benchmark import BenchmarkInputSnapshot, BenchmarkReport, MetricResult
+from aei.domain.benchmark import BenchmarkInputSnapshot, BenchmarkReport, MetricResult, RevisionIdentity, EvaluationBasisIdentity
 
 
 class MetricCalculator(Protocol):
@@ -50,6 +50,18 @@ class BenchmarkRunner:
             evaluator_ref=snapshot.evaluator_ref,
             metric_results=results,
             metadata={"provenance": provenance},
+            revision_identity=RevisionIdentity(
+                producer_ref=snapshot.producer_ref,
+                model_ref=snapshot.model_ref,
+                config_ref=snapshot.config_ref,
+                code_revision=snapshot.metadata.get("code_revision"),
+                analysis_run_ids=snapshot.analysis_run_ids,
+                fingerprint=snapshot.metadata.get("revision_fingerprint"),
+            ),
+            dataset_identity=snapshot.metadata.get("dataset_identity"),
+            annotation_identity=snapshot.metadata.get("annotation_identity"),
+            metric_config_identity=snapshot.metadata.get("metric_config_identity"),
+            evaluation_basis=snapshot.metadata.get("evaluation_basis"),
         )
 
 

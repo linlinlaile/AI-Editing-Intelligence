@@ -14,11 +14,37 @@ Video → Scene → Event → Shot → Moment / Frame
 
 ## 当前阶段
 
-项目处于 V0.1 设计固化阶段，仓库暂时没有实现代码。当前第一个编码目标是：
+项目已完成 V0.1 的 **Phase 5.5.3 Benchmark Revision Comparison**，仓库已经包含 Semantic Timeline、Observation、Evidence、Analyzer、评价和 benchmark vertical slice 的实现。当前 benchmark 只覆盖已定义的视觉分类 accuracy v1；VLM、ASR、embedding 或云服务仍只能通过显式 adapter 接入，不能泄漏进领域契约。
 
-> Semantic Timeline Contract v1 + Frame-accurate Ingest Vertical Slice
+### 当前 benchmark 架构
 
-这一阶段不接入 VLM、ASR、embedding 或云服务。
+Observation/Evaluation 之外，benchmark 使用独立的契约与执行链路：
+
+```text
+Benchmark:
+Dataset + Snapshot
+    → MetricResult
+    → BenchmarkReport
+    → BenchmarkComparisonReport
+```
+
+最后一步消费 baseline 和 candidate 两个既有 `BenchmarkReport`。`EvaluationBasisIdentity` 表达固定评价基础，`RevisionIdentity` 记录分析来源，`CaseOutcome` 提供 case 迁移分析所需的结果。不可比时，迁移统计仅作为 diagnostic information，不作为 regression/improvement conclusion。
+
+必须保持：
+
+- Benchmark != Evaluator
+- MetricResult != EvaluationResult
+- BenchmarkComparisonReport != EvaluationResult
+- Comparator 不访问 Observation/Evidence/Analyzer/Model/Media/Repository/SQLite，也不重新解释 Observation。
+
+当前限制：
+
+- task-aware `RevisionIdentity` 未实现；
+- `MetricResult` full consistency validation 未实现；
+- benchmark persistence 未实现；
+- quality gate 未实现。
+
+具体范围参见 [Phase 5.5.3 Summary](docs/phases/PHASE_5_5_3_SUMMARY.md)。
 
 ## 开始工作前必须阅读
 

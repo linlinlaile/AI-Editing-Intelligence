@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aei.domain.benchmark import BenchmarkInputSnapshot, MetricResult
+from aei.domain.benchmark import BenchmarkInputSnapshot, CaseOutcome, MetricResult
 
 
 class VisionClassificationAccuracy:
@@ -23,23 +23,28 @@ class VisionClassificationAccuracy:
     def calculate(self, snapshot: BenchmarkInputSnapshot) -> MetricResult:
         correct = incorrect = unevaluable = 0
         reasons: dict[str, int] = {}
+        outcomes: list[CaseOutcome] = []
 
         for case in snapshot.cases:
             reason = self._unevaluable_reason(case)
             if reason is not None:
                 unevaluable += 1
                 reasons[reason] = reasons.get(reason, 0) + 1
+                outcomes.append(CaseOutcome(case.id, "UNEVALUABLE", reason))
                 continue
             expected = case.annotation.expected  # type: ignore[union-attr]
             observed = case.observed_value
             if observed["class_id"] == expected["class_id"] and observed["label"] != expected["label"]:
                 unevaluable += 1
                 reasons["label_mismatch"] = reasons.get("label_mismatch", 0) + 1
+                outcomes.append(CaseOutcome(case.id, "UNEVALUABLE", "label_mismatch"))
                 continue
             if observed["class_id"] == expected["class_id"]:
                 correct += 1
+                outcomes.append(CaseOutcome(case.id, "CORRECT"))
             else:
                 incorrect += 1
+                outcomes.append(CaseOutcome(case.id, "INCORRECT"))
 
         evaluated = correct + incorrect
         status = "COMPUTED" if evaluated else "NOT_EVALUABLE"
@@ -64,6 +69,7 @@ class VisionClassificationAccuracy:
                 "confidence_used": False,
                 "unevaluable_reasons": reasons,
             },
+            case_outcomes=tuple(outcomes),
         )
 
     def _unevaluable_reason(self, case: Any) -> str | None:
