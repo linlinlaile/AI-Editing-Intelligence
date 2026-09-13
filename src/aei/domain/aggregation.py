@@ -17,6 +17,7 @@ __all__ = [
     "ClassDistributionEntry", "SampledClassificationSummary", "ShotObservationDraft",
     "ObservationSource", "AggregationEvidenceDraft", "AggregationMetadata", "AggregationResult",
     "aggregate_shot_observations", "aggregate_classifications", "aggregate_shot_classification",
+    "generate_shot_observation_evidence", "materialize_shot_observation",
 ]
 
 
@@ -403,3 +404,84 @@ def aggregate_shot_observations(
 
 aggregate_classifications = aggregate_shot_observations
 aggregate_shot_classification = aggregate_shot_observations
+
+
+def generate_shot_observation_evidence(
+    result: AggregationResult,
+    *,
+    aggregation_run_id: str,
+    observation_id: str,
+    evidence_id: str,
+) -> tuple[Observation, Evidence]:
+    """Materialize an aggregation draft as a new Observation and Evidence.
+
+    This is deliberately a pure conversion: it does not persist anything and
+    never mutates or reuses upstream Evidence.  IDs are supplied by the
+    application layer so this function cannot invent run identity.
+    """
+    if not isinstance(result, AggregationResult):
+        raise TypeError("result must be an AggregationResult")
+    for value, name in ((aggregation_run_id, "aggregation_run_id"),
+                        (observation_id, "observation_id"),
+                        (evidence_id, "evidence_id")):
+        _text(value, name)
+    if observation_id == evidence_id:
+        raise ValueError("observation and evidence IDs must differ")
+
+    draft = result.observation
+    sources = result.evidence.sources
+    summary = draft.value.to_value()
+    metadata = {
+        "schema_version": SCHEMA_VERSION,
+        "aggregation_rule": {
+            "name": result.metadata.rule_name,
+            "version": result.metadata.rule_version,
+            "producer_ref": result.metadata.producer_ref,
+            "config_hash": result.metadata.config_hash,
+        },
+        "upstream_observation_ids": [s.observation_id for s in sources],
+        "upstream_evidence_ids": [s.evidence_id for s in sources],
+        "upstream_run_ids": list(result.metadata.parent_run_ids),
+        "artifact_references": [
+            {"artifact_id": s.artifact_id, "uri": s.artifact_uri,
+             "hash": s.artifact_hash, "sample_id": s.sample_id,
+             "source_point": {"stream_id": s.source_point.stream_id,
+                              "pts": s.source_point.pts,
+                              "time_base": {"numerator": s.source_point.time_base.numerator,
+                                             "denominator": s.source_point.time_base.denominator},
+                              "presentation_frame_index": s.source_point.presentation_frame_index}}
+            for s in sources
+        ],
+        "classification_statistics": {
+            "taxonomy": summary["taxonomy"],
+            "taxonomy_version": summary["taxonomy_version"],
+            "analyzed_sample_count": result.metadata.analyzed_sample_count,
+            "expected_sample_count": result.metadata.expected_sample_count,
+            "class_distribution": summary["class_distribution"],
+            "disagreements": summary["disagreements"],
+        },
+        "missing_inputs": [
+            {"sample_id": m.sample_id, "reason": m.reason.value,
+             "artifact_ids": list(m.artifact_ids), "detail": m.detail}
+            for m in result.evidence.missing_inputs
+        ],
+    }
+    # Evidence needs a supported reference; the numeric measurement carries
+    # aggregate counts while metadata carries the complete provenance.
+    evidence = Evidence(
+        evidence_id, aggregation_run_id, result.evidence.kind,
+        description="shot classification aggregation",
+        numeric_measurement={"analyzed_sample_count": result.metadata.analyzed_sample_count,
+                             "expected_sample_count": result.metadata.expected_sample_count},
+        metadata=metadata,
+    )
+    observation = Observation(
+        observation_id, aggregation_run_id, draft.target_type, draft.target_id,
+        draft.feature, summary, value_status=draft.value_status,
+        confidence=None, coverage=None, evidence_ids=(evidence.id,),
+        producer_ref=result.metadata.producer_ref,
+    )
+    return observation, evidence
+
+
+materialize_shot_observation = generate_shot_observation_evidence
