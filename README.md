@@ -12,9 +12,11 @@ V0.1 的最小闭环是：
 
 ```text
 video → ingest → shot detection → representative frame/window sampling
-      → semantic analysis → Semantic Timeline → retrieval
+      → semantic analysis → Semantic Timeline → experimental retrieval foundation
       → experimental Find Next Shot ranking
 ```
+
+产品化路线的第一阶段定位是 **AI Video Asset Intelligence**：帮助创作者导入、理解、组织和检索视频素材，逐步建立个人视频知识库。长期方向是在既有 Video Understanding 基础上形成 Semantic Video Memory、Editing Intelligence、AI Editing Assistant，最终走向 AI Editing Agent。详见 [Vision and Roadmap](docs/product/VISION_AND_ROADMAP.md) 与 [Long-term Principles](docs/product/PRINCIPLES.md)。
 
 ## V0.1 要解决的问题
 
