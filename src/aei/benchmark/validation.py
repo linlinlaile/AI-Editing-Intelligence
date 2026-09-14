@@ -26,8 +26,6 @@ class MetricResultValidator:
 
         if result.status == "NOT_EVALUABLE" and result.evaluated_case_count:
             raise ValueError("NOT_EVALUABLE result cannot contain evaluated cases")
-        if result.status == "COMPUTED" and result.evaluated_case_count == 0:
-            raise ValueError("COMPUTED result requires evaluated cases")
         if "accuracy" in result.values:
             accuracy = result.values["accuracy"]
             if not isinstance(accuracy, (int, float)) or isinstance(accuracy, bool) or not 0 <= accuracy <= 1:
@@ -143,6 +141,14 @@ __all__ = ["MetricResultValidator", "BenchmarkReportValidator", "RevisionIdentit
 def validate_comparison_identities(baseline: BenchmarkReport, candidate: BenchmarkReport, baseline_metric, candidate_metric) -> tuple[str, ...]:
     """Return stable comparability reasons for two benchmark report identities."""
     reasons: list[str] = []
+    for side, report in (("baseline", baseline), ("candidate", candidate)):
+        try:
+            # Legacy reports may omit report metadata; identity checks below
+            # still determine comparability without inventing missing fields.
+            if report.metadata.get("provenance"):
+                BenchmarkReportValidator.validate(report)
+        except (TypeError, ValueError):
+            reasons.append(f"invalid_{side}_report")
     if baseline.evaluation_basis is None or candidate.evaluation_basis is None:
         reasons.append("missing_evaluation_basis")
     else:

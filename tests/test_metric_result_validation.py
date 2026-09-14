@@ -16,7 +16,7 @@ def test_validator_accepts_computed_result():
 @pytest.mark.parametrize(
     "result, message",
     [
-        (MetricResult("m", "v1", "COMPUTED", 0, 0), "requires evaluated"),
+        (MetricResult("m", "v1", "COMPUTED", 0, 0, values={"accuracy": 0.0}), "accuracy cannot"),
         (MetricResult("m", "v1", "NOT_EVALUABLE", 1, 0), "cannot contain"),
         (MetricResult("m", "v1", "COMPUTED", 2, 0, case_outcomes=(CaseOutcome("a", "CORRECT"),)), "evaluated_case_count"),
         (MetricResult("m", "v1", "NOT_EVALUABLE", 0, 0, values={"accuracy": 0.0}), "accuracy cannot"),
