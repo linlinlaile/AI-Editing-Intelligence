@@ -48,6 +48,28 @@ def test_dataset_and_metric_mismatch_are_not_comparable():
     assert result.metadata["transition_interpretation"] == "DIAGNOSTIC_ONLY"
 
 
+def test_fingerprint_mismatch_is_not_strictly_comparable():
+    baseline = _report("b", (CaseOutcome("1", "CORRECT"),), 1.0)
+    candidate = _report("c", (CaseOutcome("1", "CORRECT"),), 1.0)
+    candidate = BenchmarkReport(candidate.id, candidate.evaluation_run_id, candidate.dataset_id, candidate.dataset_version, candidate.annotation_version, candidate.evaluator_ref, candidate.metric_results, revision_identity=RevisionIdentity("p", "m", "c", "code", (), "different"), dataset_identity=candidate.dataset_identity, annotation_identity=candidate.annotation_identity, metric_config_identity=candidate.metric_config_identity, evaluation_basis=candidate.evaluation_basis)
+    baseline = BenchmarkReport(baseline.id, baseline.evaluation_run_id, baseline.dataset_id, baseline.dataset_version, baseline.annotation_version, baseline.evaluator_ref, baseline.metric_results, revision_identity=RevisionIdentity("p", "m", "c", "code", (), "same"), dataset_identity=baseline.dataset_identity, annotation_identity=baseline.annotation_identity, metric_config_identity=baseline.metric_config_identity, evaluation_basis=baseline.evaluation_basis)
+    result = compare_benchmark_reports(baseline, candidate)
+    assert result.comparability_status == "NOT_COMPARABLE"
+    assert "revision_fingerprint_mismatch" in result.comparability_reasons
+
+
+def test_task_mismatch_is_evaluation_basis_mismatch():
+    baseline = _report("b", (CaseOutcome("1", "CORRECT"),), 1.0)
+    basis = EvaluationBasisIdentity("ds:f", "d1", "ann:f", "a1", "cases:f", "other-task", "vision.classification", "tax")
+    candidate = BenchmarkReport("c", "run-c", "ds", "d1", "a1", "eval:v1", baseline.metric_results,
+                                revision_identity=baseline.revision_identity, dataset_identity="ds:f", annotation_identity="ann:f",
+                                metric_config_identity="metric:f", evaluation_basis=basis)
+    result = compare_benchmark_reports(baseline, candidate)
+    assert result.comparability_status == "NOT_COMPARABLE"
+    assert "evaluation_basis_mismatch" in result.comparability_reasons
+    assert not any("revision" in reason for reason in result.comparability_reasons)
+
+
 def test_duplicate_case_outcome_is_rejected():
     import pytest
     with pytest.raises(ValueError, match="unique"):

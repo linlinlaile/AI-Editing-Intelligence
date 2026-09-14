@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from aei.domain.benchmark import BenchmarkComparisonReport, BenchmarkReport, CaseOutcome
+from aei.benchmark.validation import validate_comparison_identities
 
 
 def _metric(report: BenchmarkReport):
@@ -11,23 +12,8 @@ def _metric(report: BenchmarkReport):
 
 
 def compare_benchmark_reports(baseline: BenchmarkReport, candidate: BenchmarkReport) -> BenchmarkComparisonReport:
-    reasons: list[str] = []
     bm, cm = _metric(baseline), _metric(candidate)
-    if baseline.evaluation_basis is None or candidate.evaluation_basis is None:
-        reasons.append("missing_evaluation_basis")
-    elif baseline.evaluation_basis != candidate.evaluation_basis:
-        reasons.append("evaluation_basis_mismatch")
-    if (baseline.dataset_id, baseline.dataset_version, baseline.annotation_version) != (candidate.dataset_id, candidate.dataset_version, candidate.annotation_version):
-        reasons.append("report_dataset_or_annotation_mismatch")
-    if bm is None or cm is None:
-        reasons.append("requires_single_metric")
-    elif (bm.metric_name, bm.metric_version) != (cm.metric_name, cm.metric_version):
-        reasons.append("metric_mismatch")
-    for side, revision in (("baseline", baseline.revision_identity), ("candidate", candidate.revision_identity)):
-        if revision is None or revision.completeness == "MISSING":
-            reasons.append(f"missing_{side}_revision_identity")
-        elif revision.completeness != "COMPLETE":
-            reasons.append(f"incomplete_{side}_revision_identity")
+    reasons = list(validate_comparison_identities(baseline, candidate, bm, cm))
 
     bo = {o.case_id: o for o in (bm.case_outcomes if bm else ())}
     co = {o.case_id: o for o in (cm.case_outcomes if cm else ())}
