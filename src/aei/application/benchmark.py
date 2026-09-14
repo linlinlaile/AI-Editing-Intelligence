@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from aei.domain.benchmark import BenchmarkInputSnapshot, BenchmarkReport, MetricResult, RevisionIdentity, EvaluationBasisIdentity
+from aei.benchmark.validation import BenchmarkReportValidator, MetricResultValidator
 
 
 class MetricCalculator(Protocol):
@@ -29,6 +30,8 @@ class BenchmarkRunner:
         if not self.calculators:
             raise ValueError("at least one metric calculator is required")
         results = tuple(calculator.calculate(snapshot) for calculator in self.calculators)
+        for result in results:
+            MetricResultValidator.validate(result)
         metric_versions = tuple(result.metric_version for result in results)
         provenance = {
             "dataset_version": snapshot.dataset.dataset_version,
@@ -41,7 +44,7 @@ class BenchmarkRunner:
             "config_ref": snapshot.config_ref,
             "analysis_run_ids": snapshot.analysis_run_ids,
         }
-        return BenchmarkReport(
+        report = BenchmarkReport(
             id=f"benchmark:{snapshot.dataset.id}:{evaluation_run_id}",
             evaluation_run_id=evaluation_run_id,
             dataset_id=snapshot.dataset.id,
@@ -63,6 +66,8 @@ class BenchmarkRunner:
             metric_config_identity=snapshot.metadata.get("metric_config_identity"),
             evaluation_basis=snapshot.metadata.get("evaluation_basis"),
         )
+        BenchmarkReportValidator.validate(report)
+        return report
 
 
 @dataclass(frozen=True)
